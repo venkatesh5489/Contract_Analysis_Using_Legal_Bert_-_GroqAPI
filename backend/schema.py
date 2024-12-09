@@ -76,11 +76,50 @@ class Comparison(Base):
 
     @validates('results')
     def validate_results(self, key, value):
-        required_keys = ['summary', 'matches', 'partial_matches', 'mismatches', 'critical_analysis']
+        required_keys = [
+            'similarity_score', 
+            'component_scores', 
+            'differences', 
+            'risk_level', 
+            'change_summary',
+            'summary'
+        ]
+        component_score_keys = [
+            'legal_term_score',
+            'numeric_score', 
+            'obligation_score',
+            'semantic_score'
+        ]
+        difference_keys = [
+            'legal_terms',
+            'numeric_values',
+            'obligations',
+            'critical_changes'
+        ]
+        summary_keys = [
+            'match_count',
+            'partial_match_count',
+            'mismatch_count',
+            'overall_similarity',
+            'risk_level',
+            'critical_issues_count'
+        ]
+
         if not isinstance(value, dict):
             raise ValueError("Results must be a dictionary")
+            
         if not all(k in value for k in required_keys):
             raise ValueError(f"Results must contain all required keys: {', '.join(required_keys)}")
+            
+        if not all(k in value['component_scores'] for k in component_score_keys):
+            raise ValueError("Component scores must contain all score types")
+            
+        if not all(k in value['differences'] for k in difference_keys):
+            raise ValueError("Differences must contain all analysis types")
+            
+        if not all(k in value['summary'] for k in summary_keys):
+            raise ValueError("Summary must contain all required fields")
+            
         return value
 
     def to_dict(self):
@@ -95,9 +134,17 @@ class Comparison(Base):
                 'total_clauses': self.total_clauses,
                 'matched_clauses': self.matched_clauses,
                 'partial_matches': self.partial_matches,
-                'mismatches': self.mismatches
+                'mismatches': self.mismatches,
+                'overall_similarity': self.match_percentage / 100
             },
-            'results': self.results,
+            'results': {
+                'similarity_score': self.results['similarity_score'],
+                'component_scores': self.results['component_scores'],
+                'differences': self.results['differences'],
+                'risk_level': self.results['risk_level'],
+                'change_summary': self.results['change_summary'],
+                'summary': self.results['summary']
+            },
             'recommendations': [rec.to_dict() for rec in self.recommendations]
         }
 
